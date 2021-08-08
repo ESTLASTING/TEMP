@@ -1,0 +1,35 @@
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
+# 功能：将in_folder文件夹（不含子文件夹）中的所有的.nc4文件中的variable变量导出为以"prefix+原文件名"为新文件名的栅格文件
+# 提示：导入脚本前强烈建议将本代码中的所有中文字符删除！！！
+import os
+import time
+import arcpy
+from arcpy.sa import *
+
+in_folder = arcpy.GetParameterAsText(0)  # folder of .nc4 files
+out_folder = arcpy.GetParameterAsText(1)  # folder of output tiff files
+variable = arcpy.GetParameterAsText(2)  # target variable name
+prefix = arcpy.GetParameterAsText(3)  # the prefix string of output file's filename
+
+# Input data source
+arcpy.env.workspace = in_folder
+arcpy.env.overwriteOutput = True
+
+# Loop through a list of files in the workspace
+nc_files = [nc_file for nc_file in os.listdir(in_folder) if nc_file.endswith(".nc4")]
+nums = len(nc_files)
+for num, nc_file in enumerate(nc_files):
+    s = time.time()
+    inNCfiles = arcpy.env.workspace + "/" + nc_file
+    fileroot = prefix + nc_file
+    outRaster = out_folder + "/" + fileroot
+    try:
+        # Process1: Make NetCDF Raster Layer
+        arcpy.MakeNetCDFRasterLayer_md(inNCfiles, variable, "lon", "lat", variable, "", "", "BY_VALUE")
+        # Process2: Copy Raster
+        arcpy.CopyRaster_management(variable, outRaster + ".tif", "", "", "", "NONE", "NONE", "")
+        e = time.time()
+        arcpy.AddMessage("{0}/{1} | {2} Completed, time used {3}s".format(num+1, nums, nc_file, e-s))
+    except:
+        arcpy.AddMessage("{0}/{1} | {2} Errored".format(num+1, nums, nc_file))
